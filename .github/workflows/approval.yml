@@ -11,11 +11,6 @@ jobs:
     name: Golden approval
     runs-on: ubuntu-latest
     steps:
-      - env:
-          BODY: ${{ github.event.pull_request.body }}
-        run: |
-          echo "event=${{ github.event_name }}/${{ github.event.action }} sha=${{ github.sha }} head=${{ github.event.pull_request.head.sha }}"
-          echo "body: $BODY"
-          s=$(printf '%s' "$BODY" | sed -n 's/.*sleep=\([0-9]*\).*/\1/p')
-          if [ -n "$s" ]; then sleep "$s"; fi
-          printf '%s' "$BODY" | grep -q GREEN
+      - run: |
+          echo "event=${{ github.event_name }}"
+          test "${{ github.event_name }}" = "pull_request_review"
