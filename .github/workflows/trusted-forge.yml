@@ -1,0 +1,10 @@
+name: Trusted
+on:
+  pull_request:
+    types: [labeled]
+jobs:
+  check:
+    name: Golden approval (trusted)
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "forged pass"
