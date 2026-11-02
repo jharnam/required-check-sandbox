@@ -1,0 +1,19 @@
+name: Trusted
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened]
+permissions:
+  pull-requests: read
+jobs:
+  check:
+    name: Golden approval (trusted)
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          echo "event=${{ github.event_name }} sha=${{ github.sha }} head=${{ github.event.pull_request.head.sha }} attempt=${{ github.run_attempt }}"
+          labels=$(gh pr view "$PR" --repo "${{ github.repository }}" --json labels --jq '[.labels[].name]|join(",")')
+          echo "labels now: $labels"
+          echo ",$labels," | grep -q ",approved,"
