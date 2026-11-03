@@ -1,0 +1,45 @@
+name: Golden Approval Re-run
+
+# Re-runs golden-approval.yml's newest run on the head commit when a review is submitted or
+# dismissed, so an approval turns `Golden approval - main` green without editing the PR. It never
+# decides anything itself: the re-run is main's copy and reads the approvals live. If this
+# workflow breaks, or a PR edits it, the check stays red until the PR body is edited.
+#
+# Its job name must differ from the check's, so its own result never counts as the check.
+
+on:
+  pull_request_review:
+    types: [submitted, dismissed]
+
+concurrency:
+  group: golden-approval-rerun-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+permissions:
+  actions: write
+
+jobs:
+  rerun:
+    name: Re-run golden approval
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Re-run the newest golden approval run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          run_id=$(gh api "repos/$REPO/actions/workflows/trusted.yml/runs?head_sha=$HEAD_SHA&event=pull_request_target&per_page=1" \
+            --jq '.workflow_runs[0].id // empty')
+          if [ -z "$run_id" ]; then
+            echo "::error::No Golden approval run on $HEAD_SHA to re-run. Edit the PR description to start one."
+            exit 1
+          fi
+          # A run still in progress may have read the reviews before this one landed, and an
+          # unfinished run can't be re-run. Wait for it, whatever its result.
+          gh run watch "$run_id" --repo "$REPO" --interval 10 > /dev/null
+          gh run rerun "$run_id" --repo "$REPO"
+          echo "Re-ran https://github.com/$REPO/actions/runs/$run_id"
